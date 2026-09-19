@@ -314,7 +314,9 @@
     "view_all_files": "View all files",
     "file": "File",
     "convert_title": "Voice Changer",
-    "convert_desc": "Say it once — hear it in another voice. Speech to speech, fully local."
+    "convert_desc": "Say it once — hear it in another voice. Speech to speech, fully local.",
+    "quick_stats": "Quick stats",
+    "quick_stats_hint": "Drag to rearrange."
   },
   "clone": {
     "text_label": "Text",

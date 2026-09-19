@@ -679,6 +679,10 @@ export function DraggableWidgetGrid({
 			)
 		}
 		measure()
+		// jsdom (unit tests) has no ResizeObserver — the initial measure() call
+		// above still runs, so the grid falls back to its cellSize/maxColumns
+		// defaults instead of crashing the mount.
+		if (typeof ResizeObserver === 'undefined') return undefined
 		const observer = new ResizeObserver(measure)
 		observer.observe(el)
 		return () => observer.disconnect()
