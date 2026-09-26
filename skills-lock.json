@@ -7,6 +7,12 @@
       "skillPath": "fastapi-python/SKILL.md",
       "computedHash": "cd9c84b3bf2e4cf55f4a3f97b102d3affad2682680eb3d8ec8d2f68020ba5c8d"
     },
+    "tauri-development": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "tauri-development/SKILL.md",
+      "computedHash": "0edb30d9211bebab653e1ced97835c77f5efd7bfe2922550ec52c47a6fa09ff9"
+    },
     "vite": {
       "source": "mindrally/skills",
       "sourceType": "github",

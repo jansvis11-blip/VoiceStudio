@@ -68,6 +68,7 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 - `vite` — Vite configuration, assets, HMR, builds, and Vitest guidance.
 - `fastapi-python` — FastAPI and Pydantic implementation patterns.
+- `tauri-development` — TypeScript/Rust guidance for the `frontend/src-tauri` desktop shell (commands, events, capabilities, cross-platform packaging).
 
 Canonical copies live under `.agents/skills/`; `skills-lock.json` pins their sources and hashes. Claude should follow these paths directly, avoiding cross-platform symlinks.
 <!-- GSD:skills-end -->
