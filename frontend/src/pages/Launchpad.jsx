@@ -20,8 +20,72 @@ import { API } from '../api/client';
 import { useAppStore } from '../store';
 import ReadinessChecklist from '../components/ReadinessChecklist';
 import LaunchpadDeck from '../components/LaunchpadDeck';
+import DraggableWidgetGrid from '../components/ui/draggable-widget-grid';
 import useShellNarrow from '../hooks/useShellNarrow';
 import signalField from '../assets/signal-field.webp';
+
+// The four "Quick stats" widgets — same shape as `features` above (single
+// source of truth per tile), but for the small draggable summary row rather
+// than the full-width launch deck. `size` is fixed per widget (DraggableWidgetGrid
+// manages the drag order, not the shape), so it lives outside the component.
+const QUICK_WIDGET_SIZES = { clone: 'sm', design: 'sm', dub: 'sm', files: 'wide' };
+const DEFAULT_QUICK_WIDGET_IDS = ['clone', 'design', 'dub', 'files'];
+
+/** One small stat tile: icon, big count, label — the whole card navigates. */
+function QuickStatTile({ hue, Icon, label, count, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-full w-full flex-col justify-between p-4 text-left [font-family:var(--font-sans)] cursor-pointer"
+    >
+      <span
+        className="flex h-[26px] w-[26px] items-center justify-center rounded-full"
+        style={{ backgroundColor: `color-mix(in srgb, ${hue} 16%, transparent)` }}
+      >
+        <Icon size={14} strokeWidth={1.5} color={hue} />
+      </span>
+      <span>
+        <span className="block text-[1.5rem] leading-none font-medium tabular-nums text-[color:var(--chrome-fg)]">
+          {count}
+        </span>
+        <span className="mt-[6px] block text-[0.68rem] text-[color:var(--chrome-fg-dim)]">
+          {label}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** The wide "recent files" widget: count + up to two filenames. */
+function QuickFilesTile({ hue, Icon, label, files, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-full w-full flex-col justify-between p-4 text-left [font-family:var(--font-sans)] cursor-pointer"
+    >
+      <span className="flex items-center gap-[8px]">
+        <Icon size={14} strokeWidth={1.5} color={hue} />
+        <span className="text-[0.68rem] text-[color:var(--chrome-fg-dim)]">{label}</span>
+      </span>
+      <span>
+        <span className="block text-[1.5rem] leading-none font-medium tabular-nums text-[color:var(--chrome-fg)]">
+          {files.length}
+        </span>
+        {files.length > 0 && (
+          <span className="mt-[6px] block truncate text-[0.68rem] text-[color:var(--chrome-fg-dim)]">
+            {files
+              .slice(0, 2)
+              .map((f) => (f.destination_path || f.path || f.filename || '').split(/[\\/]/).pop())
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
 
 // Shared utility-class strings for the Launchpad project/section rows. Migrated
 // from the former `.lp-project-card`/`.lp-section-title`/`.proj-*` global rules
@@ -84,6 +148,8 @@ export default function Launchpad({
   // Clone/Design are no longer separate navigation modes — both cards open
   // the unified Voice ('studio') workspace preset to the matching method.
   const setDefineMethod = useAppStore((s) => s.setDefineMethod);
+  const quickWidgetOrder = useAppStore((s) => s.launchpadWidgetOrder);
+  const setQuickWidgetOrder = useAppStore((s) => s.setLaunchpadWidgetOrder);
   const openStudio = (method) => {
     setMode('studio');
     setDefineMethod(method);
@@ -167,6 +233,73 @@ export default function Launchpad({
       go: () => openStudio('convert'),
     },
   ];
+
+  // Quick-stats widget metadata + live values, keyed by widget id. Kept
+  // separate from `quickWidgetItems` (below) because DraggableWidgetGrid
+  // only reads `items` once at mount — the id/size stay fixed, and
+  // `renderItem` looks values up here fresh on every Launchpad render, so
+  // the counts stay live without fighting the grid's own drag state.
+  const quickWidgetMeta = {
+    clone: {
+      hue: '#d3869b',
+      Icon: Fingerprint,
+      label: t('launchpad.cloned_voices'),
+      count: cloneProfiles.length,
+      go: () => openStudio('audio'),
+    },
+    design: {
+      hue: '#8ec07c',
+      Icon: Wand2,
+      label: t('launchpad.designed_voices'),
+      count: designProfiles.length,
+      go: () => openStudio('design'),
+    },
+    dub: {
+      hue: '#fe8019',
+      Icon: Film,
+      label: t('launchpad.dubbing_projects'),
+      count: studioProjects.length,
+      go: () => setMode('dub'),
+    },
+    files: {
+      hue: '#fabd2f',
+      Icon: HardDrive,
+      label: t('launchpad.recent_files'),
+      files: recentFiles,
+      go: () => setMode('projects'),
+    },
+  };
+  // Merge the saved drag order with the canonical id set: any id missing
+  // from an older saved order (a future widget) is appended at the end;
+  // any id no longer recognized is dropped.
+  const quickWidgetIds = quickWidgetOrder
+    ? [
+        ...quickWidgetOrder.filter((id) => DEFAULT_QUICK_WIDGET_IDS.includes(id)),
+        ...DEFAULT_QUICK_WIDGET_IDS.filter((id) => !quickWidgetOrder.includes(id)),
+      ]
+    : DEFAULT_QUICK_WIDGET_IDS;
+  const quickWidgetItems = quickWidgetIds.map((id) => ({ id, size: QUICK_WIDGET_SIZES[id] }));
+  const renderQuickWidget = (item) => {
+    const meta = quickWidgetMeta[item.id];
+    if (!meta) return null;
+    return item.id === 'files' ? (
+      <QuickFilesTile
+        hue={meta.hue}
+        Icon={meta.Icon}
+        label={meta.label}
+        files={meta.files}
+        onClick={meta.go}
+      />
+    ) : (
+      <QuickStatTile
+        hue={meta.hue}
+        Icon={meta.Icon}
+        label={meta.label}
+        count={meta.count}
+        onClick={meta.go}
+      />
+    );
+  };
 
   const rootRef = useRef(null);
   const shellNarrow = useShellNarrow(rootRef);
@@ -265,6 +398,37 @@ export default function Launchpad({
       <div className="relative z-[1] mx-auto w-full max-w-[1180px] shrink-0 px-[44px] py-[4px] @max-[900px]/launchpad:px-[20px] @max-[640px]/launchpad:px-[12px]">
         <LaunchpadDeck features={features} narrow={shellNarrow} />
       </div>
+
+      {/* Quick stats — a small, user-reorderable row above the project lists.
+          Drag to customize; the order sticks via launchpadWidgetOrder. Gated
+          on the same condition as the project lists below it: an all-zero
+          row is just noise on a fresh install, where ReadinessChecklist
+          already owns the empty-state screen. */}
+      {(profiles.length > 0 || studioProjects.length > 0) && (
+        <div className="relative z-[1] mx-auto w-full max-w-[1180px] shrink-0 px-[44px] pt-2 @max-[900px]/launchpad:px-[20px] @max-[640px]/launchpad:px-[12px]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-[10px]">
+            <div className="[font-family:var(--chrome-font-mono)] text-[length:var(--chrome-label-size)] font-medium uppercase [letter-spacing:var(--chrome-label-track)] text-[color:var(--chrome-fg-dim)] m-0 flex items-center gap-[9px] shrink-0">
+              {t('launchpad.quick_stats')}
+            </div>
+            <span
+              className="flex-1 h-px [background-image:linear-gradient(90deg,color-mix(in_srgb,var(--chrome-fg)_14%,transparent),transparent)]"
+              aria-hidden="true"
+            />
+            <span className="shrink-0 text-[length:var(--chrome-label-size)] text-[color:var(--chrome-fg-dim)] [font-family:var(--chrome-font-mono)]">
+              {t('launchpad.quick_stats_hint')}
+            </span>
+          </div>
+          <DraggableWidgetGrid
+            items={quickWidgetItems}
+            renderItem={renderQuickWidget}
+            onChange={(next) => setQuickWidgetOrder(next.map((i) => i.id))}
+            maxColumns={4}
+            cellSize={150}
+            gap={10}
+            radius={12}
+          />
+        </div>
+      )}
 
       <div
         className="relative z-[1] mx-auto grid w-full max-w-[1180px] shrink-0 [grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-6 px-[44px] pt-6 pb-8 @max-[900px]/launchpad:px-[20px] @max-[640px]/launchpad:px-[12px]"

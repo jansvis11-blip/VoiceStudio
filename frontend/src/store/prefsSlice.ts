@@ -292,6 +292,17 @@ export interface PrefsSlice {
 
   font: FontId;
   setFont: (id: FontId) => void;
+
+  /**
+   * Order of the Launchpad "Quick stats" widget tiles, by widget id
+   * ('clone' | 'design' | 'dub' | 'files'). Drag-to-rearrange (see
+   * DraggableWidgetGrid) writes here on every drop so the layout sticks
+   * across restarts. `null` = never customized — Launchpad falls back to
+   * the canonical order and merges in any widget id missing from an older
+   * saved order (e.g. after a future widget is added).
+   */
+  launchpadWidgetOrder: string[] | null;
+  setLaunchpadWidgetOrder: (order: string[]) => void;
 }
 
 /** Map a `GET/POST /dictation/prefs` response → the store's dictation fields.
@@ -467,4 +478,7 @@ export const createPrefsSlice: StateCreator<PrefsSlice, [], [], PrefsSlice> = (s
     if (stack) document.documentElement.style.setProperty('--font-sans', stack);
     else document.documentElement.style.removeProperty('--font-sans');
   },
+
+  launchpadWidgetOrder: null,
+  setLaunchpadWidgetOrder: (order) => set({ launchpadWidgetOrder: order }),
 });

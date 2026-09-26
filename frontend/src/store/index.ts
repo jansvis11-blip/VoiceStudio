@@ -188,6 +188,9 @@ export const useAppStore = create<AppStore>()(
         langPromptSeen: s.langPromptSeen,
         theme: s.theme,
         font: s.font,
+        // Launchpad "Quick stats" widget drag order (#draggable-widget-grid) —
+        // a layout choice, so it sticks like the other chrome prefs above.
+        launchpadWidgetOrder: s.launchpadWidgetOrder,
         // Generate-tab prefs — users expect their synthesis knobs to stick.
         language: s.language,
         speed: s.speed,
